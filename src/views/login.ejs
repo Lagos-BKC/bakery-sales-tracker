@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in – Bakery Sales Tracker</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="logo-row"><span class="logo">🥖</span></div>
+    <h1>Golden Crust Sales Tracker</h1>
+    <div class="subtitle">Sign in to manage sales &amp; receivables</div>
+    <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+    <form method="POST" action="/login">
+      <div class="form-field" style="margin-bottom:14px;">
+        <label>Email</label>
+        <input type="email" name="email" required autofocus placeholder="you@bakery.com">
+      </div>
+      <div class="form-field" style="margin-bottom:18px;">
+        <label>Password</label>
+        <input type="password" name="password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Log In</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

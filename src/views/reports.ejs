@@ -1,0 +1,51 @@
+<div class="page-header">
+  <div>
+    <h2>Reports</h2>
+    <div class="subtitle">Slice your sales data the way you need it.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="filter-bar">
+      <input type="date" id="fDateFrom" title="From date">
+      <input type="date" id="fDateTo" title="To date">
+      <select id="fCustomer"><option value="">All Customers</option></select>
+      <select id="fCategory"><option value="">All Categories</option></select>
+      <select id="fStatus">
+        <option value="">All Statuses</option>
+        <option value="Paid">Paid</option><option value="Partially Paid">Partially Paid</option><option value="Outstanding">Outstanding</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" id="clearFiltersBtn">Clear Filters</button>
+      <span style="flex:1;"></span>
+      <button class="btn btn-secondary btn-sm" id="exportBtn">Export This View (CSV)</button>
+    </div>
+    <div class="chart-tabs" id="reportTabs" style="flex-wrap:wrap;">
+      <button class="chart-tab active" data-report="sales-by-day">Sales by Day</button>
+      <button class="chart-tab" data-report="sales-by-week">Sales by Week</button>
+      <button class="chart-tab" data-report="sales-by-month">Sales by Month</button>
+      <button class="chart-tab" data-report="sales-by-customer">Sales by Customer</button>
+      <button class="chart-tab" data-report="sales-by-sku">Sales by SKU</button>
+      <button class="chart-tab" data-report="sales-by-category">Sales by Category</button>
+      <button class="chart-tab" data-report="paid-vs-unpaid">Paid vs Unpaid</button>
+      <button class="chart-tab" data-report="outstanding">Outstanding Receivables</button>
+    </div>
+  </div>
+</div>
+
+<div class="card" id="chartCard" style="display:none;">
+  <div class="card-body"><canvas id="reportChart" height="90"></canvas></div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3 id="reportTitle">Sales by Day</h3></div>
+  <div class="card-body no-pad">
+    <div class="table-wrap"><table class="data-table" id="reportTable">
+      <thead id="reportThead"></thead>
+      <tbody id="reportBody"><tr class="loading-row"><td><span class="spinner"></span></td></tr></tbody>
+      <tfoot id="reportTfoot"></tfoot>
+    </table></div>
+  </div>
+</div>
+
+<script src="/js/reports.js"></script>

@@ -1,0 +1,94 @@
+<div class="page-header">
+  <div>
+    <h2>Sales Dashboard</h2>
+    <div class="subtitle">A quick look at how the bakery is doing right now.</div>
+  </div>
+  <div class="filter-bar" style="margin-bottom:0;">
+    <select id="rangeSelect">
+      <option value="today">Today</option>
+      <option value="yesterday">Yesterday</option>
+      <option value="this_week">This Week</option>
+      <option value="last_week">Last Week</option>
+      <option value="this_month" selected>This Month</option>
+      <option value="last_month">Last Month</option>
+      <option value="this_quarter">This Quarter</option>
+      <option value="this_year">This Year</option>
+      <option value="custom">Custom Date Range</option>
+    </select>
+    <input type="date" id="customFrom" style="display:none;">
+    <input type="date" id="customTo" style="display:none;">
+  </div>
+</div>
+
+<div class="kpi-grid" id="kpiGrid">
+  <div class="kpi-card"><div class="kpi-label">Today's Sales</div><div class="kpi-value" id="kpiToday">–</div></div>
+  <div class="kpi-card"><div class="kpi-label">This Week's Sales</div><div class="kpi-value" id="kpiWeek">–</div><div class="kpi-sub" id="kpiWowSub"></div></div>
+  <div class="kpi-card"><div class="kpi-label">This Month's Sales</div><div class="kpi-value" id="kpiMonth">–</div><div class="kpi-sub" id="kpiMomSub"></div></div>
+  <div class="kpi-card"><div class="kpi-label">Total Amount Paid</div><div class="kpi-value" id="kpiPaid">–</div><div class="kpi-sub">All-time collected</div></div>
+  <div class="kpi-card warn"><div class="kpi-label">Total Outstanding</div><div class="kpi-value" id="kpiOutstanding">–</div><div class="kpi-sub">Owed by customers</div></div>
+  <div class="kpi-card"><div class="kpi-label">Unpaid Transactions</div><div class="kpi-value" id="kpiUnpaidCount">–</div></div>
+  <div class="kpi-card"><div class="kpi-label">Active Customers</div><div class="kpi-value" id="kpiCustomers">–</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Sales Trend — <span id="trendPeriodLabel">Selected Period</span></h3>
+    <div class="chart-tabs">
+      <button class="chart-tab active" data-range="last_7">7d</button>
+      <button class="chart-tab" data-range="last_30">30d</button>
+      <button class="chart-tab" data-range="last_90">90d</button>
+      <button class="chart-tab" data-gran="weekly">Weekly</button>
+      <button class="chart-tab" data-gran="monthly">Monthly</button>
+    </div>
+  </div>
+  <div class="card-body">
+    <canvas id="trendChart" height="90"></canvas>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-header"><h3>Top Customers</h3></div>
+    <div class="card-body no-pad">
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Customer</th><th class="num">Sales</th><th class="num">% of Sales</th></tr></thead>
+        <tbody id="topCustomersBody"><tr class="empty-row"><td colspan="3">Loading…</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Top Products</h3></div>
+    <div class="card-body no-pad">
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Product</th><th class="num">Units</th><th class="num">Revenue</th></tr></thead>
+        <tbody id="topProductsBody"><tr class="empty-row"><td colspan="3">Loading…</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>🔴 Outstanding Customers — Who Owes Money</h3>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Customer</th><th class="num">Amount Owing</th><th>Oldest Outstanding</th><th class="num">Transactions</th></tr></thead>
+      <tbody id="outstandingBody"><tr class="empty-row"><td colspan="4">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Recent Sales</h3><a href="/sales" class="btn btn-secondary btn-sm">View All</a></div>
+  <div class="card-body no-pad">
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Date</th><th>Customer</th><th class="num">Amount</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Status</th></tr></thead>
+      <tbody id="recentSalesBody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<button class="fab-mobile" onclick="window.location.href='/sales?new=1'">+</button>
+
+<script src="/js/dashboard.js"></script>

@@ -1,0 +1,67 @@
+<div class="page-header">
+  <div>
+    <h2>Settings</h2>
+    <div class="subtitle">Your account and, for administrators, user management.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Your Account</h3></div>
+  <div class="card-body">
+    <p><strong><%= currentUser.name %></strong> — <%= currentUser.email %></p>
+    <p class="small-muted">Role: <span class="badge <%= currentUser.role === 'admin' ? 'badge-admin' : 'badge-staff' %>"><%= currentUser.role === 'admin' ? 'Administrator' : 'Staff' %></span></p>
+  </div>
+</div>
+
+<% if (currentUser.role === 'admin') { %>
+<div class="card">
+  <div class="card-header">
+    <h3>Users</h3>
+    <button class="btn btn-primary btn-sm" id="newUserBtn">+ Add User</button>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+      <tbody id="usersBody"><tr class="loading-row"><td colspan="5"><span class="spinner"></span></td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Audit Trail</h3></div>
+  <div class="card-body no-pad">
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
+      <tbody id="auditBody"><tr class="loading-row"><td colspan="5"><span class="spinner"></span></td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- Add/Edit User modal -->
+<div class="modal-overlay" id="userModalOverlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="userModalTitle">Add User</h3><button class="modal-close" onclick="closeModal('userModalOverlay')">&times;</button></div>
+    <div class="modal-body">
+      <div id="userModalError"></div>
+      <div class="form-grid">
+        <div class="form-field"><label>Name *</label><input type="text" id="userName"></div>
+        <div class="form-field"><label>Email *</label><input type="email" id="userEmail"></div>
+        <div class="form-field"><label>Role *</label>
+          <select id="userRole"><option value="staff">Staff</option><option value="admin">Administrator</option></select>
+        </div>
+        <div class="form-field"><label>Status</label>
+          <select id="userStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        </div>
+        <div class="form-field span-2"><label id="userPasswordLabel">Password *</label><input type="password" id="userPassword" placeholder="Min 6 characters"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('userModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="saveUserBtn">Save User</button>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<script>const IS_ADMIN = <%- JSON.stringify(currentUser.role === 'admin') %>;</script>
+<script src="/js/settings.js"></script>

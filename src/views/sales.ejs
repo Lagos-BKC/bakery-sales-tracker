@@ -1,0 +1,43 @@
+<div class="page-header">
+  <div>
+    <h2>Sales</h2>
+    <div class="subtitle">Record daily sales and manage the full transaction history.</div>
+  </div>
+  <button class="btn btn-primary" id="newSaleBtn">+ New Sale</button>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="filter-bar">
+      <div class="search-input"><input type="text" id="searchInput" placeholder="Search customer, transaction ID, notes…"></div>
+      <select id="statusFilter">
+        <option value="">All Statuses</option>
+        <option value="Paid">Paid</option>
+        <option value="Partially Paid">Partially Paid</option>
+        <option value="Outstanding">Outstanding</option>
+        <option value="Overdue">Overdue</option>
+      </select>
+      <input type="date" id="dateFrom" title="From">
+      <input type="date" id="dateTo" title="To">
+      <button class="btn btn-secondary btn-sm" id="clearFiltersBtn">Clear</button>
+      <span style="flex:1;"></span>
+      <a class="btn btn-secondary btn-sm" href="/api/export/sales?format=csv">Export CSV</a>
+      <a class="btn btn-secondary btn-sm" href="/api/export/sales?format=xlsx">Export Excel</a>
+    </div>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>Transaction</th><th>Date</th><th>Customer</th><th>Products</th>
+          <th class="num">Total</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="salesBody"><tr class="loading-row"><td colspan="9"><span class="spinner"></span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<button class="fab-mobile" id="fabNewSale">+</button>
+
+<script src="/js/sales.js"></script>

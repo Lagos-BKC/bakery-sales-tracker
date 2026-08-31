@@ -1,0 +1,55 @@
+<div class="page-header">
+  <div>
+    <h2>Payments / Receivables</h2>
+    <div class="subtitle">See who owes you money and record payments as they come in.</div>
+  </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit,minmax(160px,1fr));">
+  <div class="kpi-card warn"><div class="kpi-label">Total Outstanding</div><div class="kpi-value" id="sumOutstanding">–</div></div>
+  <div class="kpi-card"><div class="kpi-label">Outstanding Transactions</div><div class="kpi-value" id="sumCount">–</div></div>
+  <div class="kpi-card"><div class="kpi-label">Overdue Amount</div><div class="kpi-value" id="sumOverdue">–</div></div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Accounts Receivable</h3>
+    <div class="filter-bar" style="margin-bottom:0;">
+      <select id="statusFilter">
+        <option value="">All</option>
+        <option value="Outstanding">Outstanding</option>
+        <option value="Partially Paid">Partially Paid</option>
+        <option value="Overdue">Overdue</option>
+        <option value="Paid">Paid</option>
+      </select>
+      <a class="btn btn-secondary btn-sm" href="/api/export/receivables?format=csv">Export CSV</a>
+      <a class="btn btn-secondary btn-sm" href="/api/export/receivables?format=xlsx">Export Excel</a>
+    </div>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Customer</th><th>Invoice / Transaction</th><th>Date</th><th>Due Date</th><th class="num">Amount</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Status</th><th></th></tr></thead>
+        <tbody id="arBody"><tr class="loading-row"><td colspan="9"><span class="spinner"></span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Accounts Receivable Aging Report</h3>
+    <a class="btn btn-secondary btn-sm" href="/api/export/receivables?format=xlsx">Export</a>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Customer</th><th class="num">Current</th><th class="num">1–7 Days</th><th class="num">8–30 Days</th><th class="num">31–60 Days</th><th class="num">61–90 Days</th><th class="num">90+ Days</th><th class="num">Total</th></tr></thead>
+        <tbody id="agingBody"><tr class="loading-row"><td colspan="8"><span class="spinner"></span></td></tr></tbody>
+        <tfoot id="agingFoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/payments.js"></script>

@@ -1,0 +1,50 @@
+<div class="page-header">
+  <div>
+    <h2 id="custName">Loading…</h2>
+    <div class="subtitle" id="custMeta"></div>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-secondary" id="editCustomerBtn">Edit Customer</button>
+    <button class="btn btn-primary" id="newSaleForCustomerBtn">+ New Sale</button>
+  </div>
+</div>
+
+<div class="stat-mini-grid">
+  <div class="stat-mini"><div class="lbl">Total Purchases</div><div class="val" id="statTotal">–</div></div>
+  <div class="stat-mini"><div class="lbl">Total Paid</div><div class="val" id="statPaid">–</div></div>
+  <div class="stat-mini"><div class="lbl">Total Outstanding</div><div class="val" id="statOutstanding">–</div></div>
+  <div class="stat-mini"><div class="lbl"># Transactions</div><div class="val" id="statCount">–</div></div>
+  <div class="stat-mini"><div class="lbl">Avg Transaction</div><div class="val" id="statAvg">–</div></div>
+  <div class="stat-mini"><div class="lbl">Last Purchase</div><div class="val" id="statLast">–</div></div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="card-header"><h3>Sales Trend</h3></div>
+    <div class="card-body"><canvas id="custTrendChart" height="110"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>Most Frequently Purchased</h3></div>
+    <div class="card-body no-pad">
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Product</th><th class="num">Units</th><th class="num">Revenue</th></tr></thead>
+        <tbody id="topProductsBody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3>Transaction History</h3></div>
+  <div class="card-body no-pad">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Transaction</th><th>Products</th><th class="num">Amount</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Status</th><th></th></tr></thead>
+        <tbody id="txnBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>const CUSTOMER_ID = <%- JSON.stringify(customerId) %>;</script>
+<script src="/js/customer-detail.js"></script>

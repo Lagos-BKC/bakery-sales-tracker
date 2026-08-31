@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title><%= typeof title !== 'undefined' ? title + ' – Bakery Sales Tracker' : 'Bakery Sales Tracker' %></title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥖</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">🥖</div>
+      <div>
+        <div class="name">Golden Crust</div>
+        <div class="sub">Sales &amp; AR Tracker</div>
+      </div>
+    </div>
+    <nav class="nav-links">
+      <a href="/" class="<%= path === '/' ? 'active' : '' %>"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="/sales" class="<%= path.startsWith('/sales') ? 'active' : '' %>"><span class="nav-icon">🧾</span> Sales</a>
+      <a href="/customers" class="<%= path.startsWith('/customers') ? 'active' : '' %>"><span class="nav-icon">👥</span> Customers</a>
+      <a href="/products" class="<%= path.startsWith('/products') ? 'active' : '' %>"><span class="nav-icon">🍞</span> Products / SKUs</a>
+      <a href="/payments" class="<%= path.startsWith('/payments') ? 'active' : '' %>"><span class="nav-icon">💰</span> Payments / Receivables</a>
+      <a href="/reports" class="<%= path.startsWith('/reports') ? 'active' : '' %>"><span class="nav-icon">📈</span> Reports</a>
+      <a href="/settings" class="<%= path.startsWith('/settings') ? 'active' : '' %>"><span class="nav-icon">⚙️</span> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <% if (currentUser) { %>
+        <div><%= currentUser.name %></div>
+        <span class="role-badge"><%= currentUser.role === 'admin' ? 'Administrator' : 'Staff' %></span>
+        <a href="/logout" class="logout-link">Log out</a>
+      <% } %>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <div class="topbar">
+      <button class="hamburger" id="hamburgerBtn" aria-label="Menu">☰</button>
+      <div style="font-weight:800;">🥖 Golden Crust</div>
+      <div style="width:30px;"></div>
+    </div>
+    <div class="page-content">
+      <%- body %>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ============ Shared Modals ============ -->
+
+<!-- New / Edit Sale -->
+<div class="modal-overlay" id="saleModalOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="saleModalTitle">New Sale</h3>
+      <button class="modal-close" onclick="closeModal('saleModalOverlay')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="saleModalError"></div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Transaction Date *</label>
+          <input type="date" id="saleDate">
+        </div>
+        <div class="form-field">
+          <label>Customer *</label>
+          <div class="combo" id="saleCustomerCombo"></div>
+        </div>
+      </div>
+
+      <div class="section-title">Line Items</div>
+      <div class="table-wrap">
+        <table class="line-items-table" id="saleLineItemsTable">
+          <thead><tr><th style="min-width:220px;">SKU / Product</th><th style="width:90px;">Qty</th><th style="width:110px;">Unit Price</th><th style="width:110px;">Total</th><th></th></tr></thead>
+          <tbody id="saleLineItemsBody"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="addLineItemBtn" style="margin-top:8px;">+ Add Line</button>
+      <div class="txn-total-row">Transaction Total: <span id="saleTransactionTotal">$0.00</span></div>
+
+      <hr class="divider">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Payment Status *</label>
+          <div class="radio-group">
+            <label><input type="radio" name="saleStatus" value="Unpaid" checked> Unpaid</label>
+            <label><input type="radio" name="saleStatus" value="Paid"> Paid</label>
+            <label><input type="radio" name="saleStatus" value="Partial"> Partially Paid</label>
+          </div>
+        </div>
+        <div class="form-field" id="saleAmountPaidField" style="display:none;">
+          <label>Amount Paid</label>
+          <input type="number" id="saleAmountPaid" min="0" step="0.01">
+        </div>
+        <div class="form-field" id="salePaymentDateField" style="display:none;">
+          <label>Payment Date</label>
+          <input type="date" id="salePaymentDate">
+        </div>
+        <div class="form-field" id="salePaymentMethodField" style="display:none;">
+          <label>Payment Method</label>
+          <select id="salePaymentMethod">
+            <option>Cash</option><option>E-transfer</option><option>Cheque</option>
+            <option>Credit/Debit</option><option>Bank Transfer</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-field span-2">
+          <label>Notes</label>
+          <textarea id="saleNotes" placeholder="Optional"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('saleModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="saveSaleBtn">Save Sale</button>
+    </div>
+  </div>
+</div>
+
+<!-- New / Edit Customer -->
+<div class="modal-overlay" id="customerModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="customerModalTitle">Add New Customer</h3>
+      <button class="modal-close" onclick="closeModal('customerModalOverlay')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="customerModalError"></div>
+      <div class="form-grid">
+        <div class="form-field span-2">
+          <label>Business Name *</label>
+          <input type="text" id="custBusinessName">
+        </div>
+        <div class="form-field">
+          <label>Contact Name</label>
+          <input type="text" id="custContactName">
+        </div>
+        <div class="form-field">
+          <label>Phone</label>
+          <input type="tel" id="custPhone">
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" id="custEmail">
+        </div>
+        <div class="form-field">
+          <label>Payment Terms</label>
+          <select id="custPaymentTerms">
+            <option>COD</option><option>Net 7</option><option>Net 15</option><option>Net 30</option><option>Net 60</option>
+          </select>
+        </div>
+        <div class="form-field span-2">
+          <label>Address</label>
+          <input type="text" id="custAddress">
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="custStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        </div>
+        <div class="form-field span-2">
+          <label>Notes</label>
+          <textarea id="custNotes"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('customerModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="saveCustomerBtn">Save Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- New / Edit Product -->
+<div class="modal-overlay" id="productModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="productModalTitle">Add New SKU</h3>
+      <button class="modal-close" onclick="closeModal('productModalOverlay')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="productModalError"></div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>SKU Code *</label>
+          <input type="text" id="prodSkuCode" placeholder="e.g. BFB-001">
+        </div>
+        <div class="form-field">
+          <label>Product Name *</label>
+          <input type="text" id="prodName" placeholder="e.g. Butter Filled Bread">
+        </div>
+        <div class="form-field">
+          <label>Category</label>
+          <input type="text" id="prodCategory" placeholder="e.g. Bread" list="categoryList">
+          <datalist id="categoryList"></datalist>
+        </div>
+        <div class="form-field">
+          <label>Unit of Measure</label>
+          <input type="text" id="prodUnit" placeholder="e.g. Loaf, Dozen, Pack">
+        </div>
+        <div class="form-field">
+          <label>Default Selling Price *</label>
+          <input type="number" id="prodPrice" min="0" step="0.01">
+        </div>
+        <div class="form-field">
+          <label>Status</label>
+          <select id="prodStatus"><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        </div>
+        <div class="form-field span-2">
+          <label>Description</label>
+          <textarea id="prodDescription"></textarea>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:8px;">Changing the price later will not affect the price recorded on past sales.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('productModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="saveProductBtn">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Payment -->
+<div class="modal-overlay" id="paymentModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Record Payment</h3>
+      <button class="modal-close" onclick="closeModal('paymentModalOverlay')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="paymentModalError"></div>
+      <p class="small-muted" id="paymentModalContext" style="margin-bottom:14px;"></p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Payment Date *</label>
+          <input type="date" id="payDate">
+        </div>
+        <div class="form-field">
+          <label>Amount *</label>
+          <input type="number" id="payAmount" min="0" step="0.01">
+        </div>
+        <div class="form-field">
+          <label>Payment Method</label>
+          <select id="payMethod">
+            <option>Cash</option><option>E-transfer</option><option>Cheque</option>
+            <option>Credit/Debit</option><option>Bank Transfer</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Reference Number</label>
+          <input type="text" id="payReference" placeholder="Optional">
+        </div>
+        <div class="form-field span-2">
+          <label>Notes</label>
+          <textarea id="payNotes"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('paymentModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="savePaymentBtn">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/common.js"></script>
+<script src="/js/modals.js"></script>
+<script>
+  var CURRENT_USER = <%- JSON.stringify(currentUser) %>;
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<div class="page-header">
+  <div>
+    <h2>Products / SKUs</h2>
+    <div class="subtitle">Manage what you sell and set default prices.</div>
+  </div>
+  <button class="btn btn-primary" id="newProductBtn">+ Add New SKU</button>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="filter-bar">
+      <div class="search-input"><input type="text" id="searchInput" placeholder="Search SKU or product name…"></div>
+      <select id="categoryFilter"><option value="">All Categories</option></select>
+      <select id="statusFilter">
+        <option value="">All</option>
+        <option value="active" selected>Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <span style="flex:1;"></span>
+      <a class="btn btn-secondary btn-sm" href="/api/export/products?format=csv">Export CSV</a>
+      <a class="btn btn-secondary btn-sm" href="/api/export/products?format=xlsx">Export Excel</a>
+    </div>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>SKU</th><th>Product</th><th>Category</th><th>Unit</th><th class="num">Default Price</th>
+          <th class="num">Units Sold</th><th class="num">Revenue</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="productsBody"><tr class="loading-row"><td colspan="9"><span class="spinner"></span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/products.js"></script>
