@@ -90,6 +90,12 @@ CREATE TABLE IF NOT EXISTS audit_log (
   details TEXT
 );
 
+CREATE TABLE IF NOT EXISTS sessions (
+  sid TEXT PRIMARY KEY,
+  session TEXT NOT NULL,
+  expires INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales_transactions(transaction_date);
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales_transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_status ON sales_transactions(payment_status);
