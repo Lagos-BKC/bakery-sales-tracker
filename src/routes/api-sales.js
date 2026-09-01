@@ -7,9 +7,15 @@ const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-function nextTransactionCode() {
-  const row = db.prepare("SELECT COUNT(*) c FROM sales_transactions").get();
-  return 'TXN-' + String(row.c + 1).padStart(6, '0');
+// Transaction codes are derived from the row's own auto-increment id (assigned
+// by SQLite after insert), never from COUNT(*) or MAX(id) computed beforehand.
+// AUTOINCREMENT ids are never reused, even after deletions, so a code derived
+// this way can never collide with an existing row - unlike a COUNT(*)-based
+// scheme, which regenerates an already-used code as soon as any earlier
+// transaction has been deleted (the gap makes COUNT(*) fall behind the
+// highest id actually in use).
+function codeForId(id) {
+  return 'TXN-' + String(id).padStart(6, '0');
 }
 
 function validateLineItems(lines) {
@@ -109,7 +115,6 @@ router.post('/', (req, res) => {
   const outstanding = computeOutstanding(transactionTotal, paid);
   const finalStatus = derivePaymentStatus(transactionTotal, paid);
   const dueDate = computeDueDate(transaction_date, customer.payment_terms);
-  const code = nextTransactionCode();
 
   const insertTxn = db.prepare(`
     INSERT INTO sales_transactions
@@ -117,6 +122,7 @@ router.post('/', (req, res) => {
        payment_status, due_date, payment_date, payment_method, notes, created_by, updated_by)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
+  const updateCode = db.prepare('UPDATE sales_transactions SET transaction_code = ? WHERE id = ?');
   const insertLine = db.prepare(`
     INSERT INTO sales_line_items (transaction_id, product_id, quantity, unit_price, line_total)
     VALUES (?,?,?,?,?)
@@ -127,22 +133,24 @@ router.post('/', (req, res) => {
   `);
 
   const userId = req.session.user.id;
-  const txnResult = db.transaction(() => {
+  const { txnId, code } = db.transaction(() => {
     const info = insertTxn.run(
-      code, customer_id, transaction_date, transactionTotal, paid, outstanding, finalStatus,
+      null, customer_id, transaction_date, transactionTotal, paid, outstanding, finalStatus,
       dueDate, paid > 0 ? (payment_date || transaction_date) : null, paid > 0 ? (payment_method || 'Cash') : null,
       notes || null, userId, userId
     );
     const txnId = info.lastInsertRowid;
+    const code = codeForId(txnId);
+    updateCode.run(code, txnId);
     for (const l of preparedLines) insertLine.run(txnId, l.product_id, l.quantity, l.unit_price, l.line_total);
     if (paid > 0) {
       insertPayment.run(txnId, payment_date || transaction_date, paid, payment_method || 'Cash', null, 'Recorded at sale entry', userId);
     }
-    return txnId;
+    return { txnId, code };
   })();
 
-  logAudit(req, 'sales_transaction', txnResult, 'create', `Created ${code} for ${customer.business_name}, total $${transactionTotal}`);
-  res.status(201).json({ id: txnResult, transaction_code: code });
+  logAudit(req, 'sales_transaction', txnId, 'create', `Created ${code} for ${customer.business_name}, total $${transactionTotal}`);
+  res.status(201).json({ id: txnId, transaction_code: code });
 });
 
 // PUT /api/sales/:id - edit transaction (preserves original date unless changed by admin/staff explicitly)
