@@ -6,9 +6,20 @@ const { logAudit } = require('../utils/audit');
 
 const router = express.Router();
 
-function nextCustomerCode() {
-  const row = db.prepare("SELECT COUNT(*) c FROM customers").get();
-  return 'CUST-' + String(row.c + 1).padStart(4, '0');
+// Customer codes are derived from the row's own auto-increment id, not from
+// COUNT(*) computed beforehand - see the identical fix (and explanation) in
+// api-sales.js. AUTOINCREMENT ids are never reused, even after rows are
+// removed, so a code derived this way can never collide with an existing one.
+function codeForId(id) {
+  return 'CUST-' + String(id).padStart(4, '0');
+}
+
+const VALID_PAYMENT_TERMS = ['COD', 'Net 7', 'Net 15', 'Net 30', 'Net 60'];
+function normalizePaymentTerms(value) {
+  if (!value) return 'COD';
+  const s = String(value).trim().toLowerCase().replace(/\s+/g, ' ');
+  const match = VALID_PAYMENT_TERMS.find(t => t.toLowerCase() === s);
+  return match || 'COD';
 }
 
 // GET /api/customers?search=&status=
@@ -86,16 +97,84 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const { business_name, contact_name, phone, email, address, payment_terms, notes, status } = req.body;
   if (!business_name || !business_name.trim()) return res.status(400).json({ error: 'Business name is required.' });
-  const code = nextCustomerCode();
   const stmt = db.prepare(`
     INSERT INTO customers (customer_code, business_name, contact_name, phone, email, address, payment_terms, status, notes)
     VALUES (?,?,?,?,?,?,?,?,?)
   `);
-  const info = stmt.run(code, business_name.trim(), contact_name || null, phone || null, email || null,
-    address || null, payment_terms || 'COD', status || 'active', notes || null);
+  const updateCode = db.prepare('UPDATE customers SET customer_code = ? WHERE id = ?');
+  const info = stmt.run(null, business_name.trim(), contact_name || null, phone || null, email || null,
+    address || null, normalizePaymentTerms(payment_terms), status || 'active', notes || null);
+  const code = codeForId(info.lastInsertRowid);
+  updateCode.run(code, info.lastInsertRowid);
   logAudit(req, 'customer', info.lastInsertRowid, 'create', `Created customer ${business_name}`);
   const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(customer);
+});
+
+// POST /api/customers/import - bulk create customers parsed client-side from
+// an uploaded CSV/Excel file. Body: { customers: [{ business_name, contact_name,
+// phone, email, payment_terms, address, notes }, ...] }. Rows missing a
+// business name, or whose business name already exists (case-insensitively,
+// against the database or an earlier row in the same file), are skipped and
+// reported back rather than failing the whole import.
+router.post('/import', (req, res) => {
+  const rows = Array.isArray(req.body.customers) ? req.body.customers : null;
+  if (!rows || !rows.length) return res.status(400).json({ error: 'No customer rows were provided.' });
+  if (rows.length > 5000) return res.status(400).json({ error: 'Import is limited to 5000 rows at a time.' });
+
+  const existingNames = new Set(
+    db.prepare('SELECT business_name FROM customers').all().map(r => r.business_name.trim().toLowerCase())
+  );
+  const seenInFile = new Set();
+
+  const insertStmt = db.prepare(`
+    INSERT INTO customers (customer_code, business_name, contact_name, phone, email, address, payment_terms, status, notes)
+    VALUES (?,?,?,?,?,?,?,?,?)
+  `);
+  const updateCode = db.prepare('UPDATE customers SET customer_code = ? WHERE id = ?');
+
+  const skipped = [];
+  const inserted = [];
+
+  db.transaction(() => {
+    rows.forEach((row, idx) => {
+      const businessName = (row.business_name || '').toString().trim();
+      const rowNum = idx + 2; // +1 for 0-index, +1 for the header row
+      if (!businessName) {
+        skipped.push({ row: rowNum, business_name: businessName, reason: 'Missing business name' });
+        return;
+      }
+      const key = businessName.toLowerCase();
+      if (existingNames.has(key)) {
+        skipped.push({ row: rowNum, business_name: businessName, reason: 'A customer with this business name already exists' });
+        return;
+      }
+      if (seenInFile.has(key)) {
+        skipped.push({ row: rowNum, business_name: businessName, reason: 'Duplicate business name earlier in this file' });
+        return;
+      }
+      seenInFile.add(key);
+
+      const info = insertStmt.run(
+        null, businessName,
+        (row.contact_name || '').toString().trim() || null,
+        (row.phone || '').toString().trim() || null,
+        (row.email || '').toString().trim() || null,
+        (row.address || '').toString().trim() || null,
+        normalizePaymentTerms(row.payment_terms),
+        'active',
+        (row.notes || '').toString().trim() || null
+      );
+      const code = codeForId(info.lastInsertRowid);
+      updateCode.run(code, info.lastInsertRowid);
+      inserted.push({ id: info.lastInsertRowid, customer_code: code, business_name: businessName });
+    });
+  })();
+
+  logAudit(req, 'customer', 0, 'import',
+    `Bulk imported ${inserted.length} customer(s) via CSV/Excel upload${skipped.length ? `, ${skipped.length} row(s) skipped` : ''}`);
+
+  res.status(201).json({ inserted: inserted.length, skipped, customers: inserted });
 });
 
 router.put('/:id', (req, res) => {
@@ -107,7 +186,7 @@ router.put('/:id', (req, res) => {
     UPDATE customers SET business_name=?, contact_name=?, phone=?, email=?, address=?, payment_terms=?, notes=?, status=?, updated_at=datetime('now')
     WHERE id=?
   `).run(business_name.trim(), contact_name || null, phone || null, email || null, address || null,
-    payment_terms || 'COD', notes || null, status || 'active', req.params.id);
+    normalizePaymentTerms(payment_terms), notes || null, status || 'active', req.params.id);
   logAudit(req, 'customer', req.params.id, 'update', `Updated customer ${business_name}`);
   const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
   res.json(customer);
