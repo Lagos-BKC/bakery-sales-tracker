@@ -170,6 +170,7 @@ textarea { resize: vertical; min-height: 60px; }
 .alert { padding: 10px 14px; border-radius: 8px; font-size: 13.5px; margin-bottom: 14px; }
 .alert-error { background: var(--red-100); color: var(--red-600); }
 .alert-info { background: var(--amber-100); color: var(--amber-600); }
+.alert-success { background: var(--green-100); color: var(--green-600); }
 
 /* ---------- Misc ---------- */
 .page-header { display:flex; align-items:flex-start; justify-content:space-between; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
