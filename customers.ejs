@@ -1,0 +1,82 @@
+<div class="page-header">
+  <div>
+    <h2>Customers</h2>
+    <div class="subtitle">Manage the businesses and contacts you sell to.</div>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-secondary" id="importCustomersBtn">⬆ Import from Excel/CSV</button>
+    <button class="btn btn-primary" id="newCustomerBtn">+ Add New Customer</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="filter-bar">
+      <div class="search-input"><input type="text" id="searchInput" placeholder="Search business name, contact or customer ID…"></div>
+      <select id="statusFilter">
+        <option value="">All</option>
+        <option value="active" selected>Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <span style="flex:1;"></span>
+      <a class="btn btn-secondary btn-sm" href="/api/export/customers?format=csv">Export CSV</a>
+      <a class="btn btn-secondary btn-sm" href="/api/export/customers?format=xlsx">Export Excel</a>
+    </div>
+  </div>
+  <div class="card-body no-pad">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>Customer ID</th><th>Business Name</th><th>Contact</th><th>Terms</th>
+          <th class="num">Total Purchases</th><th class="num">Outstanding</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="customersBody"><tr class="loading-row"><td colspan="8"><span class="spinner"></span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Import Customers -->
+<div class="modal-overlay" id="importModalOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Import Customers from Excel/CSV</h3>
+      <button class="modal-close" onclick="closeModal('importModalOverlay')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="importModalError"></div>
+
+      <div id="importStep1">
+        <p class="small-muted">
+          Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file with one customer per row.
+          The first row should be column headers. Recognized columns: <strong>Business Name*</strong>, Contact Name, Phone,
+          Email, Payment Terms (COD, Net 7, Net 15, Net 30, Net 60), Address, Notes.
+        </p>
+        <div style="display:flex; gap:10px; align-items:center; margin:14px 0;">
+          <button class="btn btn-secondary btn-sm" id="downloadTemplateBtn">Download Template</button>
+          <span class="small-muted">Business Name is the only required column.</span>
+        </div>
+        <input type="file" id="importFileInput" accept=".csv,.xlsx,.xls">
+      </div>
+
+      <div id="importStep2" style="display:none;">
+        <div id="importSummary" style="margin-bottom:12px;"></div>
+        <div class="table-wrap" style="max-height:340px; overflow-y:auto;">
+          <table class="data-table">
+            <thead><tr><th>Row</th><th>Business Name</th><th>Contact</th><th>Terms</th><th>Status</th></tr></thead>
+            <tbody id="importPreviewBody"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="importChooseAnotherBtn" style="margin-top:12px;">Choose a Different File</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('importModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="confirmImportBtn" style="display:none;">Import Customers</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/js/customers.js"></script>
+<script src="/js/customer-import.js"></script>
