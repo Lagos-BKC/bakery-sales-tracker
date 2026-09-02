@@ -62,6 +62,13 @@
     </div>
     <div class="modal-body">
       <div id="saleModalError"></div>
+
+      <div id="scanInvoiceBar" style="display:flex; align-items:center; gap:10px; margin-bottom:16px; padding:10px 12px; background:var(--amber-100); border-radius:8px;">
+        <label class="btn btn-secondary btn-sm" for="scanInvoiceInput" style="margin:0; cursor:pointer;">📷 Scan Invoice Photo</label>
+        <input type="file" id="scanInvoiceInput" accept="image/*" capture="environment" style="display:none;">
+        <span id="scanInvoiceStatus" class="small-muted">Take or upload a photo of the invoice to auto-fill this form.</span>
+      </div>
+
       <div class="form-grid">
         <div class="form-field">
           <label>Transaction Date *</label>
