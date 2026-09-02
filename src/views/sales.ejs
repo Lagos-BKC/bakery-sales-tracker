@@ -3,7 +3,10 @@
     <h2>Sales</h2>
     <div class="subtitle">Record daily sales and manage the full transaction history.</div>
   </div>
-  <button class="btn btn-primary" id="newSaleBtn">+ New Sale</button>
+  <div style="display:flex; gap:8px;">
+    <button class="btn btn-secondary" id="importSalesBtn">⬆ Import from Excel/CSV</button>
+    <button class="btn btn-primary" id="newSaleBtn">+ New Sale</button>
+  </div>
 </div>
 
 <div class="card">
@@ -39,5 +42,47 @@
 </div>
 
 <button class="fab-mobile" id="fabNewSale">+</button>
+
+<!-- Bulk Import Sales -->
+<div class="modal-overlay" id="importSalesModalOverlay">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Import Sales from Excel/CSV</h3>
+      <button class="modal-close" onclick="closeModal('importSalesModalOverlay')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="importSalesError"></div>
+
+      <div id="importSalesStep1">
+        <p class="small-muted">
+          Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file with one row per product line.
+          Give every line of the same sale the same <strong>Invoice #</strong> to group them into one transaction; leave it
+          blank for a single-line sale. Recognized columns: <strong>Invoice #</strong>, <strong>Date*</strong>,
+          <strong>Customer (Sold To)*</strong>, <strong>Product/SKU*</strong>, <strong>Quantity*</strong>,
+          <strong>Unit Price*</strong>, Payment Status, Amount Paid, Payment Date, Payment Method, Notes.
+        </p>
+        <div style="display:flex; gap:10px; align-items:center; margin:14px 0;">
+          <button class="btn btn-secondary btn-sm" id="downloadSalesTemplateBtn">Download Template</button>
+          <span class="small-muted">Customer and product names are matched automatically — you'll get a chance to fix any that don't match.</span>
+        </div>
+        <input type="file" id="importSalesFileInput" accept=".csv,.xlsx,.xls">
+      </div>
+
+      <div id="importSalesStep2" style="display:none;">
+        <div id="importSalesSummary" style="margin-bottom:12px;"></div>
+        <div id="importSalesPreviewList" style="max-height:440px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;"></div>
+        <button class="btn btn-secondary btn-sm" id="importSalesChooseAnotherBtn" style="margin-top:12px;">Choose a Different File</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('importSalesModalOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="confirmImportSalesBtn" style="display:none;">Import Sales</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/js/sales.js"></script>
+<script src="/js/sales-import.js"></script>le" id="fabNewSale">+</button>
 
 <script src="/js/sales.js"></script>
