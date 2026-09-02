@@ -116,6 +116,10 @@ const Modals = (function () {
     document.getElementById('saleAmountPaidField').style.display = 'none';
     document.getElementById('salePaymentDateField').style.display = 'none';
     document.getElementById('salePaymentMethodField').style.display = 'none';
+    // Scanning only makes sense when starting a fresh sale, not editing one.
+    document.getElementById('scanInvoiceBar').style.display = editingSaleId ? 'none' : '';
+    document.getElementById('scanInvoiceInput').value = '';
+    document.getElementById('scanInvoiceStatus').textContent = 'Take or upload a photo of the invoice to auto-fill this form.';
 
     await Promise.all([loadCustomers(), loadProducts()]);
 
@@ -208,6 +212,84 @@ const Modals = (function () {
       showError('saleModalError', e.message);
     } finally {
       btn.disabled = false; btn.textContent = 'Save Sale';
+    }
+  }
+
+  // ============ SCAN INVOICE PHOTO ============
+  // Resizes/re-encodes the photo client-side before upload so a multi-MB
+  // phone photo doesn't blow past the request size limit or run up the
+  // vision API bill for no benefit - 1600px on the long edge is plenty for
+  // reading invoice text.
+  function downscaleImage(file, maxDim) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read that file.'));
+      reader.onload = (e) => { img.src = e.target.result; };
+      img.onerror = () => reject(new Error('That file does not look like an image.'));
+      img.onload = () => {
+        const scale = Math.min(1, (maxDim || 1600) / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleScanInvoice(file) {
+    const statusEl = document.getElementById('scanInvoiceStatus');
+    statusEl.textContent = 'Reading invoice…';
+    showError('saleModalError', null);
+    try {
+      const { base64, mediaType } = await downscaleImage(file);
+      const result = await api('/api/sales/scan-invoice', { method: 'POST', body: { image_base64: base64, media_type: mediaType } });
+
+      if (result.extracted.transaction_date) document.getElementById('saleDate').value = result.extracted.transaction_date;
+
+      const comboEl = document.getElementById('saleCustomerCombo');
+      if (result.customer_match) {
+        comboEl.dataset.customerId = result.customer_match.id;
+        comboEl.querySelector('.combo-input').value = result.customer_match.business_name;
+      } else if (result.extracted.sold_to) {
+        comboEl.dataset.customerId = '';
+        comboEl.querySelector('.combo-input').value = result.extracted.sold_to;
+      }
+
+      if (result.line_items && result.line_items.length) {
+        document.getElementById('saleLineItemsBody').innerHTML = '';
+        result.line_items.forEach(li => {
+          if (li.product_match) {
+            addLineItemRow({ product_id: li.product_match.id, product_name: li.product_match.product_name, quantity: li.quantity, unit_price: li.unit_price });
+          } else {
+            addLineItemRow({ product_name: li.description, quantity: li.quantity, unit_price: li.unit_price });
+          }
+        });
+      }
+
+      if (result.extracted.amount_paid > 0) {
+        const status = result.extracted.amount_paid >= recalcTotal() ? 'Paid' : 'Partial';
+        const radio = document.querySelector(`input[name="saleStatus"][value="${status}"]`);
+        if (radio) { radio.checked = true; updatePaymentFieldsVisibility(); }
+        document.getElementById('saleAmountPaid').value = result.extracted.amount_paid;
+      }
+      if (result.extracted.payment_method) {
+        const methodSelect = document.getElementById('salePaymentMethod');
+        if ([...methodSelect.options].some(o => o.value === result.extracted.payment_method)) {
+          methodSelect.value = result.extracted.payment_method;
+        }
+      }
+      if (result.extracted.notes) document.getElementById('saleNotes').value = result.extracted.notes;
+
+      const unmatchedCount = result.line_items.filter(li => !li.product_match).length;
+      statusEl.textContent = `Scanned. ${result.customer_match ? '' : 'Could not confidently match the customer - '}` +
+        `${unmatchedCount ? unmatchedCount + ' line item(s) need a SKU picked - ' : ''}please review everything below before saving.`;
+    } catch (e) {
+      statusEl.textContent = '';
+      showError('saleModalError', e.message);
     }
   }
 
@@ -379,6 +461,10 @@ const Modals = (function () {
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addLineItemBtn').addEventListener('click', () => addLineItemRow());
     document.getElementById('saveSaleBtn').addEventListener('click', saveSale);
+    document.getElementById('scanInvoiceInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleScanInvoice(file);
+    });
     document.querySelectorAll('input[name="saleStatus"]').forEach(r => r.addEventListener('change', updatePaymentFieldsVisibility));
     document.getElementById('saveCustomerBtn').addEventListener('click', saveCustomer);
     document.getElementById('saveProductBtn').addEventListener('click', saveProduct);
