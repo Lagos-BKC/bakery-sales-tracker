@@ -59,7 +59,6 @@ app.use('/api/reports', requireLogin, require('./routes/api-reports'));
 app.use('/api/export', requireLogin, require('./routes/api-export'));
 app.use('/api/users', requireLogin, require('./routes/api-users'));
 app.use('/api/audit', requireLogin, require('./routes/api-audit'));
-app.use('/api/admin', requireLogin, require('./routes/api-admin'));
 
 app.get('/api/session', (req, res) => res.json({ user: req.session.user || null }));
 
