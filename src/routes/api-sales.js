@@ -6,6 +6,7 @@ const { logAudit } = require('../utils/audit');
 const { requireAdmin } = require('../middleware/auth');
 const { bestMatch } = require('../utils/fuzzyMatch');
 const { extractInvoiceData } = require('../utils/invoiceScanner');
+const { computeImportDedupeKey } = require('../utils/importDedupe');
 
 const router = express.Router();
 
@@ -69,6 +70,23 @@ router.get('/', (req, res) => {
     line_items: lineStmt.all(t.id),
   }));
   res.json(result);
+});
+
+// GET /api/sales/import-report - admin only, read-only. Lists every sales
+// transaction currently tagged source='import' (covers both future bulk
+// imports and the two historical batches the migration in src/db/index.js
+// identified), so an admin can see exactly what a wipe would remove before
+// actually removing it. Must be registered before GET /:id below, or
+// Express would treat "import-report" as an :id.
+router.get('/import-report', requireAdmin, (req, res) => {
+  const rows = db.prepare(`
+    SELECT t.id, t.transaction_code, t.transaction_date, t.transaction_total, t.created_at, c.business_name
+    FROM sales_transactions t JOIN customers c ON c.id = t.customer_id
+    WHERE t.source = 'import'
+    ORDER BY t.created_at ASC, t.id ASC
+  `).all();
+  const totalValue = round2(rows.reduce((s, r) => s + r.transaction_total, 0));
+  res.json({ count: rows.length, total_value: totalValue, transactions: rows });
 });
 
 router.get('/:id', (req, res) => {
@@ -248,8 +266,8 @@ router.post('/import', (req, res) => {
   const insertTxn = db.prepare(`
     INSERT INTO sales_transactions
       (transaction_code, customer_id, transaction_date, transaction_total, amount_paid, outstanding_amount,
-       payment_status, due_date, payment_date, payment_method, notes, created_by, updated_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+       payment_status, due_date, payment_date, payment_method, notes, source, import_dedupe_key, created_by, updated_by)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
   const updateCode = db.prepare('UPDATE sales_transactions SET transaction_code = ? WHERE id = ?');
   const insertLine = db.prepare(`
@@ -260,10 +278,15 @@ router.post('/import', (req, res) => {
     INSERT INTO payments (transaction_id, payment_date, amount, payment_method, reference_number, notes, created_by)
     VALUES (?,?,?,?,?,?,?)
   `);
+  const findByDedupeKey = db.prepare('SELECT transaction_code FROM sales_transactions WHERE import_dedupe_key = ?');
 
   const userId = req.session.user.id;
   const skipped = [];
   const inserted = [];
+  // Guards against the same row appearing twice within this one file, in
+  // addition to the database check further down for a row that matches an
+  // earlier, already-completed import.
+  const seenKeysThisBatch = new Set();
 
   groups.forEach((group, idx) => {
     const label = group.invoice_ref || `Row group ${idx + 1}`;
@@ -282,6 +305,22 @@ router.post('/import', (req, res) => {
       return { product_id: l.product_id, quantity: qty, unit_price: price, line_total: lineTotal };
     });
 
+    const dedupeKey = computeImportDedupeKey({
+      customerId: customer.id,
+      transactionDate: group.transaction_date,
+      invoiceRef: group.invoice_ref,
+      lineItems: preparedLines,
+    });
+    if (seenKeysThisBatch.has(dedupeKey)) {
+      skipped.push({ group: label, reason: 'Duplicate of another row in this same file (same customer, date, invoice # and line items) - skipped' });
+      return;
+    }
+    const existingDupe = findByDedupeKey.get(dedupeKey);
+    if (existingDupe) {
+      skipped.push({ group: label, reason: `Already imported previously as ${existingDupe.transaction_code} - skipped to avoid creating a duplicate` });
+      return;
+    }
+
     let paid = 0;
     if (group.payment_status === 'Paid') paid = transactionTotal;
     else if (group.payment_status === 'Partially Paid') paid = round2(Number(group.amount_paid) || 0);
@@ -296,7 +335,7 @@ router.post('/import', (req, res) => {
         const info = insertTxn.run(
           null, customer.id, group.transaction_date, transactionTotal, paid, outstanding, finalStatus,
           dueDate, paid > 0 ? (group.payment_date || group.transaction_date) : null, paid > 0 ? (group.payment_method || 'Cash') : null,
-          group.notes || null, userId, userId
+          group.notes || null, 'import', dedupeKey, userId, userId
         );
         const txnId = info.lastInsertRowid;
         const code = codeForId(txnId);
@@ -305,6 +344,7 @@ router.post('/import', (req, res) => {
         if (paid > 0) insertPayment.run(txnId, group.payment_date || group.transaction_date, paid, group.payment_method || 'Cash', null, 'Recorded via bulk import', userId);
         return { txnId, code };
       })();
+      seenKeysThisBatch.add(dedupeKey);
       inserted.push({ id: txnId, transaction_code: code, customer: customer.business_name, total: transactionTotal });
     } catch (err) {
       skipped.push({ group: label, reason: 'Could not save this transaction (' + err.message + ')' });
@@ -315,6 +355,25 @@ router.post('/import', (req, res) => {
     `Bulk imported ${inserted.length} transaction(s) via CSV/Excel upload${skipped.length ? `, ${skipped.length} skipped` : ''}`);
 
   res.status(201).json({ inserted: inserted.length, skipped, transactions: inserted });
+});
+
+// POST /api/sales/wipe-imports - admin only. Permanently deletes every sales
+// transaction currently tagged source='import' (cascades to its line items
+// and any payments recorded against it via ON DELETE CASCADE) and nothing
+// else - manually-entered and scanned-and-saved sales are untouched.
+// Irreversible; the Settings page confirms with the admin before calling
+// this, and GET /import-report above shows exactly what will be removed.
+router.post('/wipe-imports', requireAdmin, (req, res) => {
+  const rows = db.prepare("SELECT id, transaction_code FROM sales_transactions WHERE source = 'import'").all();
+  if (!rows.length) return res.json({ deleted: 0 });
+
+  db.transaction(() => {
+    db.prepare("DELETE FROM sales_transactions WHERE source = 'import'").run();
+  })();
+
+  logAudit(req, 'sales_transaction', 0, 'delete',
+    `Wiped ${rows.length} imported transaction(s) (${rows[0].transaction_code}–${rows[rows.length - 1].transaction_code})`);
+  res.json({ deleted: rows.length });
 });
 
 // PUT /api/sales/:id - edit transaction (preserves original date unless changed by admin/staff explicitly)
