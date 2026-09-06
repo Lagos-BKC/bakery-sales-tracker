@@ -52,6 +52,15 @@ CREATE TABLE IF NOT EXISTS sales_transactions (
   payment_date TEXT,
   payment_method TEXT CHECK(payment_method IN ('Cash','E-transfer','Cheque','Credit/Debit','Bank Transfer','Other') OR payment_method IS NULL),
   notes TEXT,
+  -- Where this row came from: the manual New Sale form, a reviewed/saved
+  -- invoice photo scan, or a bulk CSV/Excel import. Lets us find and, if
+  -- needed, cleanly remove everything a given import batch created without
+  -- touching anything a person entered by hand.
+  source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual','scan','import')),
+  -- Content fingerprint of an imported row (customer + date + invoice # +
+  -- line items). Only ever set for source='import'; used to detect the same
+  -- spreadsheet data being uploaded more than once.
+  import_dedupe_key TEXT,
   created_by INTEGER REFERENCES users(id),
   updated_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -99,6 +108,12 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales_transactions(transaction_date);
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales_transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_status ON sales_transactions(payment_status);
+-- idx_sales_source and idx_sales_import_dedupe are created in src/db/index.js
+-- instead of here: on a database that predates the `source` and
+-- `import_dedupe_key` columns, an index referencing them here would fail
+-- before the migration below has a chance to add the columns (this file only
+-- ever CREATEs TABLEs/INDEXes IF NOT EXISTS, so it never reaches the ALTER
+-- TABLE step - that happens after this whole file has already run).
 CREATE INDEX IF NOT EXISTS idx_line_items_txn ON sales_line_items(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_line_items_product ON sales_line_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_payments_txn ON payments(transaction_id);
