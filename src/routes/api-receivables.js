@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { dayjs } = require('../utils/dateRanges');
+const { businessToday } = require('../utils/dateRanges');
 const { effectiveStatus, agingBucket, round2 } = require('../utils/calc');
 
 const router = express.Router();
@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
 
 // GET /api/receivables/aging
 router.get('/aging', (req, res) => {
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = businessToday().format('YYYY-MM-DD');
   const txns = db.prepare(`
     SELECT t.id, t.due_date, t.outstanding_amount, c.id customer_id, c.business_name
     FROM sales_transactions t JOIN customers c ON c.id = t.customer_id
