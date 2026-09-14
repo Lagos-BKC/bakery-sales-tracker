@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { resolveRange, dayjs } = require('../utils/dateRanges');
+const { resolveRange, dayjs, businessToday } = require('../utils/dateRanges');
 const { round2, effectiveStatus } = require('../utils/calc');
 
 const router = express.Router();
@@ -21,7 +21,7 @@ function sumPaidInPeriod(from, to) {
 router.get('/', (req, res) => {
   const { range = 'this_month', from, to } = req.query;
   const period = resolveRange(range, from, to);
-  const today = dayjs();
+  const today = businessToday();
 
   // Fixed reference windows (always current, independent of the selector)
   const todaySales = sumSales(today.format('YYYY-MM-DD'), today.format('YYYY-MM-DD'));
@@ -141,7 +141,7 @@ router.get('/', (req, res) => {
 router.get('/trend', (req, res) => {
   const { granularity = 'daily', range = 'last_30', from, to } = req.query;
   let start, end;
-  const today = dayjs();
+  const today = businessToday();
   if (range === 'last_7') { start = today.subtract(6, 'day'); end = today; }
   else if (range === 'last_30') { start = today.subtract(29, 'day'); end = today; }
   else if (range === 'last_90') { start = today.subtract(89, 'day'); end = today; }
