@@ -1,4 +1,5 @@
 const dayjs = require('dayjs');
+const { businessToday } = require('./dateRanges');
 
 const TERMS_DAYS = {
   'COD': 0,
@@ -36,7 +37,7 @@ function computeOutstanding(total, amountPaid) {
 
 // Effective status for display purposes (adds "Overdue")
 function effectiveStatus(txn, today) {
-  const t = today || dayjs().format('YYYY-MM-DD');
+  const t = today || businessToday().format('YYYY-MM-DD');
   if (txn.payment_status === 'Paid') return 'Paid';
   if (txn.due_date && dayjs(t).isAfter(dayjs(txn.due_date), 'day') && txn.outstanding_amount > 0) {
     return 'Overdue';
@@ -45,7 +46,7 @@ function effectiveStatus(txn, today) {
 }
 
 function agingBucket(dueDate, today) {
-  const t = dayjs(today || dayjs().format('YYYY-MM-DD'));
+  const t = dayjs(today || businessToday().format('YYYY-MM-DD'));
   const due = dayjs(dueDate);
   const daysPast = t.diff(due, 'day');
   if (daysPast <= 0) return 'current';
