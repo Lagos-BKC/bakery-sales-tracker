@@ -35,8 +35,16 @@ function fmtDate(d) {
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function todayStr() {
+  // Local calendar date, not UTC: toISOString() always converts to UTC
+  // first, which is the wrong day for hours every evening in any timezone
+  // behind UTC (all of the Americas) - it would silently pre-fill "New
+  // Sale" with tomorrow's date and, worse, is the client-side twin of the
+  // exact bug that made the dashboard's Today/This Week totals read $0.
   const d = new Date();
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
