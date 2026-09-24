@@ -28,6 +28,7 @@ const EXTRACT_TOOL = {
     properties: {
       sold_to: { type: 'string', description: 'The customer/business name from the "Sold To", "Bill To", or "Customer" field. Empty string if not visible.' },
       transaction_date: { type: 'string', description: 'The invoice/transaction date, formatted as YYYY-MM-DD. Empty string if not visible or not determinable.' },
+      invoice_number: { type: 'string', description: 'The invoice/order/reference number printed on the invoice (e.g. next to "Invoice #", "Invoice No", "Order #", "Ref #", or a standalone "WTL-..." code). Include it exactly as printed, digits and any letters/prefix. Empty string if not visible.' },
       line_items: {
         type: 'array',
         description: 'Every product/line item row on the invoice.',
@@ -45,7 +46,7 @@ const EXTRACT_TOOL = {
       payment_method: { type: 'string', description: 'One of Cash, E-transfer, Cheque, Credit/Debit, Bank Transfer, Other - only if clearly indicated, else empty string.' },
       notes: { type: 'string', description: 'Any invoice/reference number or other relevant note worth carrying over. Empty string if none.' },
     },
-    required: ['sold_to', 'transaction_date', 'line_items', 'amount_paid', 'payment_method', 'notes'],
+    required: ['sold_to', 'transaction_date', 'invoice_number', 'line_items', 'amount_paid', 'payment_method', 'notes'],
   },
 };
 
@@ -63,7 +64,9 @@ async function extractInvoiceData(imageBase64, mediaType) {
         {
           type: 'text',
           text: 'This is a photo of a sales invoice or receipt for a bakery\'s B2B customer. ' +
-            'Read it carefully and call record_invoice_data with everything you can determine. ' +
+            'Read it carefully and call record_invoice_data with everything you can determine, including the ' +
+            'invoice/order/reference number printed on it (often labeled "Invoice #", "Invoice No", "Order #", or ' +
+            'similar, and sometimes already prefixed "WTL-"). ' +
             'If a field is not visible or not applicable, use an empty string (or 0 for amount_paid) rather than guessing.',
         },
       ],
