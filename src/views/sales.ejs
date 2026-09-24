@@ -32,10 +32,10 @@
     <div class="table-wrap">
       <table class="data-table">
         <thead><tr>
-          <th>Transaction</th><th>Date</th><th>Customer</th><th>Products</th>
+          <th>Transaction</th><th>Invoice #</th><th>Date</th><th>Customer</th><th>Products</th>
           <th class="num">Total</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Status</th><th></th>
         </tr></thead>
-        <tbody id="salesBody"><tr class="loading-row"><td colspan="9"><span class="spinner"></span></td></tr></tbody>
+        <tbody id="salesBody"><tr class="loading-row"><td colspan="10"><span class="spinner"></span></td></tr></tbody>
       </table>
     </div>
   </div>
@@ -56,8 +56,9 @@
       <div id="importSalesStep1">
         <p class="small-muted">
           Upload a <strong>.csv</strong>, <strong>.xlsx</strong> or <strong>.xls</strong> file with one row per product line.
-          Give every line of the same sale the same <strong>Invoice #</strong> to group them into one transaction; leave it
-          blank for a single-line sale. Recognized columns: <strong>Invoice #</strong>, <strong>Date*</strong>,
+          Give every line of the same sale the same <strong>Invoice #</strong> (your WTL invoice number) to group them
+          into one transaction — it's required for every sale, so anything missing or unclear will be flagged for you to
+          fix in the next step. Recognized columns: <strong>Invoice #*</strong>, <strong>Date*</strong>,
           <strong>Customer (Sold To)*</strong>, <strong>Product/SKU*</strong>, <strong>Quantity*</strong>,
           <strong>Unit Price*</strong>, Payment Status, Amount Paid, Payment Date, Payment Method, Notes.
         </p>
@@ -83,6 +84,4 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="/js/sales.js"></script>
-<script src="/js/sales-import.js"></script>le" id="fabNewSale">+</button>
-
-<script src="/js/sales.js"></script>
+<script src="/js/sales-import.js"></script>
