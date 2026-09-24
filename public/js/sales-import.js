@@ -2,9 +2,12 @@
 // (SheetJS reads both CSV and Excel), grouped into transactions by an
 // Invoice # column, then matched against existing customers/products on the
 // server (POST /api/sales/import/resolve). Anything that doesn't match
-// confidently is left for the user to pick manually - using the same
-// search-combo control used everywhere else in the app - before the
-// resolved groups are sent to POST /api/sales/import to actually be created.
+// confidently - including a missing/malformed invoice number, which is now
+// required on every sale - is left for the user to fix manually - using the
+// same search-combo control used everywhere else in the app for customers
+// and products, and a plain "WTL-" prefixed field for the invoice number -
+// before the resolved groups are sent to POST /api/sales/import to actually
+// be created.
 
 let importSalesGroups = [];
 let importSalesCustomers = [];
@@ -111,6 +114,7 @@ async function resolveSalesMatches(groups) {
 }
 
 function groupIsReady(g) {
+  if (!g.invoice_ref) return false;
   if (!g.transaction_date) return false;
   if (!g.customer_id) return false;
   if (!g.line_items.length) return false;
@@ -183,12 +187,29 @@ function renderGroupCard(group) {
   header.className = 'import-group-header';
   header.innerHTML = `
     <div>
-      <strong>${escapeHtml(group.invoice_ref || 'Single-line sale')}</strong>
+      <strong data-role="group-title">${escapeHtml(group.invoice_ref || 'New sale')}</strong>
       <div class="meta">${escapeHtml(group.transaction_date || 'No date')} · ${group.line_items.length} item(s) · <span data-role="group-total">${fmtMoneySafe(groupTotal(group))}</span></div>
     </div>
     <span data-role="status-badge"></span>
   `;
   card.appendChild(header);
+
+  const invoiceField = document.createElement('div');
+  invoiceField.className = 'form-field';
+  invoiceField.style.marginBottom = '10px';
+  invoiceField.innerHTML = `
+    <label style="font-size:11.5px;">Invoice Number *</label>
+    <div class="input-prefix-group">
+      <span class="input-prefix">WTL-</span>
+      <input type="text" data-role="invoice-ref" placeholder="e.g. 10234" value="${escapeHtml((group.invoice_ref || '').replace(/^WTL-/i, ''))}">
+    </div>`;
+  card.appendChild(invoiceField);
+  invoiceField.querySelector('[data-role="invoice-ref"]').addEventListener('input', (e) => {
+    const suffix = e.target.value.trim().replace(/^WTL-/i, '').trim();
+    group.invoice_ref = suffix ? 'WTL-' + suffix : '';
+    card.querySelector('[data-role="group-title"]').textContent = group.invoice_ref || 'New sale';
+    updateCardStatus(group.key);
+  });
 
   const customerField = document.createElement('div');
   customerField.className = 'form-field';
@@ -320,9 +341,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('downloadSalesTemplateBtn').addEventListener('click', () => {
     const rows = [
-      { 'Invoice #': 'INV-1001', 'Date': '2026-09-01', 'Customer (Sold To)': 'ABC Grocery', 'Product/SKU': 'White Bread', 'Quantity': 10, 'Unit Price': 4, 'Payment Status': 'Paid', 'Amount Paid': 40, 'Payment Date': '2026-09-01', 'Payment Method': 'Cash', 'Notes': '' },
-      { 'Invoice #': 'INV-1001', 'Date': '2026-09-01', 'Customer (Sold To)': 'ABC Grocery', 'Product/SKU': 'Butter Croissant', 'Quantity': 6, 'Unit Price': 3.5, 'Payment Status': 'Paid', 'Amount Paid': '', 'Payment Date': '', 'Payment Method': '', 'Notes': '' },
-      { 'Invoice #': '', 'Date': '2026-09-02', 'Customer (Sold To)': 'Downtown Bistro', 'Product/SKU': 'Sourdough Loaf', 'Quantity': 4, 'Unit Price': 6.5, 'Payment Status': 'Outstanding', 'Amount Paid': '', 'Payment Date': '', 'Payment Method': '', 'Notes': '' },
+      { 'Invoice #': 'WTL-1001', 'Date': '2026-09-01', 'Customer (Sold To)': 'ABC Grocery', 'Product/SKU': 'White Bread', 'Quantity': 10, 'Unit Price': 4, 'Payment Status': 'Paid', 'Amount Paid': 40, 'Payment Date': '2026-09-01', 'Payment Method': 'Cash', 'Notes': '' },
+      { 'Invoice #': 'WTL-1001', 'Date': '2026-09-01', 'Customer (Sold To)': 'ABC Grocery', 'Product/SKU': 'Butter Croissant', 'Quantity': 6, 'Unit Price': 3.5, 'Payment Status': 'Paid', 'Amount Paid': '', 'Payment Date': '', 'Payment Method': '', 'Notes': '' },
+      { 'Invoice #': 'WTL-1002', 'Date': '2026-09-02', 'Customer (Sold To)': 'Downtown Bistro', 'Product/SKU': 'Sourdough Loaf', 'Quantity': 4, 'Unit Price': 6.5, 'Payment Status': 'Outstanding', 'Amount Paid': '', 'Payment Date': '', 'Payment Method': '', 'Notes': '' },
     ];
     const cols = ['Invoice #', 'Date', 'Customer (Sold To)', 'Product/SKU', 'Quantity', 'Unit Price', 'Payment Status', 'Amount Paid', 'Payment Date', 'Payment Method', 'Notes']
       .map(h => ({ key: h, label: h }));
