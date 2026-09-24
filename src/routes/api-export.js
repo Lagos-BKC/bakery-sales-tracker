@@ -28,7 +28,7 @@ async function sendData(req, res, rows, columns, filename) {
 
 router.get('/sales', async (req, res) => {
   const rows = db.prepare(`
-    SELECT t.transaction_code, t.transaction_date, c.business_name customer, p.sku_code, p.product_name,
+    SELECT t.transaction_code, t.invoice_number, t.transaction_date, c.business_name customer, p.sku_code, p.product_name,
            li.quantity, li.unit_price, li.line_total, t.transaction_total, t.amount_paid, t.outstanding_amount,
            t.payment_status, t.payment_date, t.payment_method, t.notes
     FROM sales_line_items li
@@ -38,7 +38,7 @@ router.get('/sales', async (req, res) => {
     ORDER BY t.transaction_date DESC
   `).all();
   const columns = [
-    { key: 'transaction_code', label: 'Transaction ID' }, { key: 'transaction_date', label: 'Date' },
+    { key: 'transaction_code', label: 'Transaction ID' }, { key: 'invoice_number', label: 'Invoice #' }, { key: 'transaction_date', label: 'Date' },
     { key: 'customer', label: 'Customer' }, { key: 'sku_code', label: 'SKU' }, { key: 'product_name', label: 'Product' },
     { key: 'quantity', label: 'Quantity' }, { key: 'unit_price', label: 'Unit Price' }, { key: 'line_total', label: 'Line Total' },
     { key: 'transaction_total', label: 'Transaction Total' }, { key: 'amount_paid', label: 'Amount Paid' },
