@@ -26,8 +26,12 @@ if (!columnExists('sales_transactions', 'source')) {
 if (!columnExists('sales_transactions', 'import_dedupe_key')) {
   db.exec('ALTER TABLE sales_transactions ADD COLUMN import_dedupe_key TEXT');
 }
+if (!columnExists('sales_transactions', 'invoice_number')) {
+  db.exec('ALTER TABLE sales_transactions ADD COLUMN invoice_number TEXT');
+}
 db.exec('CREATE INDEX IF NOT EXISTS idx_sales_source ON sales_transactions(source)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sales_import_dedupe ON sales_transactions(import_dedupe_key) WHERE import_dedupe_key IS NOT NULL');
+db.exec('CREATE INDEX IF NOT EXISTS idx_sales_invoice_number ON sales_transactions(invoice_number)');
 
 // One-time backfill for the two bulk-import batches that were run before
 // the `source` column existed, so they're recognized as imports too. Scoped
