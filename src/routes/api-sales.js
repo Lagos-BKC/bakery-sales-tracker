@@ -21,6 +21,22 @@ function codeForId(id) {
   return 'TXN-' + String(id).padStart(6, '0');
 }
 
+// Every sale's invoice number is expected to carry the bakery's own "WTL-"
+// series prefix. The manual form and photo-scan pre-fill only ever collect
+// the suffix (the prefix itself is shown as a locked label), but a bulk
+// import row or a direct API call could send anything, so this normalizes
+// whatever arrives: trims whitespace, strips a "WTL-" the caller may have
+// already included (case-insensitively, so "wtl-123"/"Wtl-123" don't produce
+// a double prefix), and re-applies exactly one canonical prefix. Returns ''
+// if nothing usable is left, which callers treat as "missing".
+function normalizeInvoiceNumber(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  const suffix = s.replace(/^WTL-/i, '').trim();
+  if (!suffix) return '';
+  return 'WTL-' + suffix;
+}
+
 function validateLineItems(lines) {
   if (!Array.isArray(lines) || lines.length === 0) return 'At least one line item (SKU) is required.';
   for (const l of lines) {
@@ -42,8 +58,8 @@ router.get('/', (req, res) => {
   `;
   const params = [];
   if (search) {
-    sql += ' AND (c.business_name LIKE ? OR t.transaction_code LIKE ? OR t.notes LIKE ?)';
-    const s = `%${search}%`; params.push(s, s, s);
+    sql += ' AND (c.business_name LIKE ? OR t.transaction_code LIKE ? OR t.invoice_number LIKE ? OR t.notes LIKE ?)';
+    const s = `%${search}%`; params.push(s, s, s, s);
   }
   if (customer_id) { sql += ' AND t.customer_id = ?'; params.push(customer_id); }
   if (status) { sql += ' AND t.payment_status = ?'; params.push(status); }
@@ -105,10 +121,12 @@ router.get('/:id', (req, res) => {
 
 // POST /api/sales - create new multi-line transaction
 router.post('/', (req, res) => {
-  const { customer_id, transaction_date, line_items, payment_status, amount_paid, payment_date, payment_method, notes } = req.body;
+  const { customer_id, transaction_date, line_items, payment_status, amount_paid, payment_date, payment_method, notes, invoice_number } = req.body;
 
   if (!customer_id) return res.status(400).json({ error: 'Customer is required.' });
   if (!transaction_date) return res.status(400).json({ error: 'Transaction date is required.' });
+  const invoiceNumber = normalizeInvoiceNumber(invoice_number);
+  if (!invoiceNumber) return res.status(400).json({ error: 'Invoice number is required.' });
   const lineErr = validateLineItems(line_items);
   if (lineErr) return res.status(400).json({ error: lineErr });
 
@@ -139,8 +157,8 @@ router.post('/', (req, res) => {
   const insertTxn = db.prepare(`
     INSERT INTO sales_transactions
       (transaction_code, customer_id, transaction_date, transaction_total, amount_paid, outstanding_amount,
-       payment_status, due_date, payment_date, payment_method, notes, created_by, updated_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+       payment_status, due_date, payment_date, payment_method, notes, invoice_number, created_by, updated_by)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
   const updateCode = db.prepare('UPDATE sales_transactions SET transaction_code = ? WHERE id = ?');
   const insertLine = db.prepare(`
@@ -157,7 +175,7 @@ router.post('/', (req, res) => {
     const info = insertTxn.run(
       null, customer_id, transaction_date, transactionTotal, paid, outstanding, finalStatus,
       dueDate, paid > 0 ? (payment_date || transaction_date) : null, paid > 0 ? (payment_method || 'Cash') : null,
-      notes || null, userId, userId
+      notes || null, invoiceNumber, userId, userId
     );
     const txnId = info.lastInsertRowid;
     const code = codeForId(txnId);
@@ -266,8 +284,8 @@ router.post('/import', (req, res) => {
   const insertTxn = db.prepare(`
     INSERT INTO sales_transactions
       (transaction_code, customer_id, transaction_date, transaction_total, amount_paid, outstanding_amount,
-       payment_status, due_date, payment_date, payment_method, notes, source, import_dedupe_key, created_by, updated_by)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       payment_status, due_date, payment_date, payment_method, notes, invoice_number, source, import_dedupe_key, created_by, updated_by)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `);
   const updateCode = db.prepare('UPDATE sales_transactions SET transaction_code = ? WHERE id = ?');
   const insertLine = db.prepare(`
@@ -293,6 +311,8 @@ router.post('/import', (req, res) => {
     const customer = group.customer_id ? db.prepare('SELECT * FROM customers WHERE id = ?').get(group.customer_id) : null;
     if (!customer) { skipped.push({ group: label, reason: 'No matching customer selected' }); return; }
     if (!group.transaction_date) { skipped.push({ group: label, reason: 'Missing transaction date' }); return; }
+    const invoiceNumber = normalizeInvoiceNumber(group.invoice_ref);
+    if (!invoiceNumber) { skipped.push({ group: label, reason: 'Missing invoice number (Invoice # column)' }); return; }
     const lineErr = validateLineItems(group.line_items);
     if (lineErr) { skipped.push({ group: label, reason: lineErr }); return; }
 
@@ -308,7 +328,7 @@ router.post('/import', (req, res) => {
     const dedupeKey = computeImportDedupeKey({
       customerId: customer.id,
       transactionDate: group.transaction_date,
-      invoiceRef: group.invoice_ref,
+      invoiceRef: invoiceNumber,
       lineItems: preparedLines,
     });
     if (seenKeysThisBatch.has(dedupeKey)) {
@@ -335,7 +355,7 @@ router.post('/import', (req, res) => {
         const info = insertTxn.run(
           null, customer.id, group.transaction_date, transactionTotal, paid, outstanding, finalStatus,
           dueDate, paid > 0 ? (group.payment_date || group.transaction_date) : null, paid > 0 ? (group.payment_method || 'Cash') : null,
-          group.notes || null, 'import', dedupeKey, userId, userId
+          group.notes || null, invoiceNumber, 'import', dedupeKey, userId, userId
         );
         const txnId = info.lastInsertRowid;
         const code = codeForId(txnId);
@@ -381,9 +401,11 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM sales_transactions WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Transaction not found' });
 
-  const { customer_id, transaction_date, line_items, notes } = req.body;
+  const { customer_id, transaction_date, line_items, notes, invoice_number } = req.body;
   if (!customer_id) return res.status(400).json({ error: 'Customer is required.' });
   if (!transaction_date) return res.status(400).json({ error: 'Transaction date is required.' });
+  const invoiceNumber = normalizeInvoiceNumber(invoice_number);
+  if (!invoiceNumber) return res.status(400).json({ error: 'Invoice number is required.' });
   const lineErr = validateLineItems(line_items);
   if (lineErr) return res.status(400).json({ error: lineErr });
 
@@ -417,9 +439,9 @@ router.put('/:id', (req, res) => {
     for (const l of preparedLines) insertLine.run(req.params.id, l.product_id, l.quantity, l.unit_price, l.line_total);
     db.prepare(`
       UPDATE sales_transactions SET customer_id=?, transaction_date=?, transaction_total=?, outstanding_amount=?,
-        payment_status=?, due_date=?, notes=?, updated_by=?, updated_at=datetime('now')
+        payment_status=?, due_date=?, notes=?, invoice_number=?, updated_by=?, updated_at=datetime('now')
       WHERE id=?
-    `).run(customer_id, transaction_date, transactionTotal, outstanding, finalStatus, dueDate, notes || null, userId, req.params.id);
+    `).run(customer_id, transaction_date, transactionTotal, outstanding, finalStatus, dueDate, notes || null, invoiceNumber, userId, req.params.id);
   })();
 
   logAudit(req, 'sales_transaction', req.params.id, 'update', `Edited ${existing.transaction_code}`);
