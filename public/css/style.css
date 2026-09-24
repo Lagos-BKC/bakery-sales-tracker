@@ -127,6 +127,13 @@ input[type=text], input[type=number], input[type=date], input[type=email], input
 }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--amber-500); outline-offset: 0; border-color: var(--amber-500); }
 textarea { resize: vertical; min-height: 60px; }
+
+/* Fixed-prefix input (e.g. the "WTL-" invoice number field) */
+.input-prefix-group { display:flex; align-items:stretch; border:1px solid var(--gray-300); border-radius:8px; background:#fff; overflow:hidden; }
+.input-prefix-group:focus-within { outline: 2px solid var(--amber-500); outline-offset: 0; border-color: var(--amber-500); }
+.input-prefix-group .input-prefix { display:flex; align-items:center; padding: 9px 2px 9px 11px; font-size:14px; font-weight:700; color: var(--brown-700); background:#fff; user-select:none; white-space:nowrap; }
+.input-prefix-group input[type=text] { border:none; border-radius:0; padding-left:2px; width:100%; }
+.input-prefix-group input[type=text]:focus { outline:none; }
 .radio-group { display:flex; gap: 14px; flex-wrap: wrap; }
 .radio-group label { display:flex; align-items:center; gap:6px; font-size:14px; font-weight:500; cursor:pointer; }
 
