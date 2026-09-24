@@ -7,14 +7,14 @@ function renderSalesTable() {
   const to = document.getElementById('dateTo').value;
 
   let rows = allSales;
-  if (search) rows = rows.filter(t => (t.business_name + ' ' + t.transaction_code + ' ' + (t.notes || '')).toLowerCase().includes(search));
+  if (search) rows = rows.filter(t => (t.business_name + ' ' + t.transaction_code + ' ' + (t.invoice_number || '') + ' ' + (t.notes || '')).toLowerCase().includes(search));
   if (status) rows = rows.filter(t => t.display_status === status);
   if (from) rows = rows.filter(t => t.transaction_date >= from);
   if (to) rows = rows.filter(t => t.transaction_date <= to);
 
   const tbody = document.getElementById('salesBody');
   if (!rows.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="9">No sales match these filters.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No sales match these filters.</td></tr>';
     return;
   }
   const isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
@@ -23,6 +23,7 @@ function renderSalesTable() {
     return `
     <tr>
       <td><strong>${t.transaction_code}</strong></td>
+      <td>${escapeHtml(t.invoice_number || '—')}</td>
       <td>${fmtDate(t.transaction_date)}</td>
       <td><a class="link-cell" href="/customers/${t.customer_id}">${escapeHtml(t.business_name)}</a></td>
       <td style="max-width:220px;white-space:normal;">${escapeHtml(productsSummary)}</td>
@@ -40,7 +41,7 @@ function renderSalesTable() {
 }
 
 async function loadSales() {
-  document.getElementById('salesBody').innerHTML = '<tr class="loading-row"><td colspan="9"><span class="spinner"></span></td></tr>';
+  document.getElementById('salesBody').innerHTML = '<tr class="loading-row"><td colspan="10"><span class="spinner"></span></td></tr>';
   try {
     allSales = await api('/api/sales');
   } catch (e) {
