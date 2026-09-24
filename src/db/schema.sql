@@ -61,6 +61,12 @@ CREATE TABLE IF NOT EXISTS sales_transactions (
   -- line items). Only ever set for source='import'; used to detect the same
   -- spreadsheet data being uploaded more than once.
   import_dedupe_key TEXT,
+  -- The bakery's own WTL-prefixed invoice number (e.g. "WTL-10234"), captured
+  -- on every new sale (manual entry, photo scan, or bulk import) so it can be
+  -- used to track down and resolve a sale against its paper/PDF invoice.
+  -- Nullable at the DB level so rows created before this column existed
+  -- aren't broken; required at the application layer for every new write.
+  invoice_number TEXT,
   created_by INTEGER REFERENCES users(id),
   updated_by INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -108,12 +114,13 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales_transactions(transaction_date);
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales_transactions(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_status ON sales_transactions(payment_status);
--- idx_sales_source and idx_sales_import_dedupe are created in src/db/index.js
--- instead of here: on a database that predates the `source` and
--- `import_dedupe_key` columns, an index referencing them here would fail
--- before the migration below has a chance to add the columns (this file only
--- ever CREATEs TABLEs/INDEXes IF NOT EXISTS, so it never reaches the ALTER
--- TABLE step - that happens after this whole file has already run).
+-- idx_sales_source, idx_sales_import_dedupe and idx_sales_invoice_number are
+-- created in src/db/index.js instead of here: on a database that predates the
+-- `source`, `import_dedupe_key` and `invoice_number` columns, an index
+-- referencing them here would fail before the migration below has a chance
+-- to add the columns (this file only ever CREATEs TABLEs/INDEXes IF NOT
+-- EXISTS, so it never reaches the ALTER TABLE step - that happens after this
+-- whole file has already run).
 CREATE INDEX IF NOT EXISTS idx_line_items_txn ON sales_line_items(transaction_id);
 CREATE INDEX IF NOT EXISTS idx_line_items_product ON sales_line_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_payments_txn ON payments(transaction_id);
