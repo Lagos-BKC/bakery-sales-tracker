@@ -106,6 +106,7 @@ const Modals = (function () {
     document.getElementById('saleModalTitle').textContent = editingSaleId ? 'Edit Sale' : 'New Sale';
     document.getElementById('saleLineItemsBody').innerHTML = '';
     document.getElementById('saleNotes').value = '';
+    document.getElementById('saleInvoiceNumber').value = '';
     document.getElementById('saleDate').value = todayStr();
     document.querySelector('input[name="saleStatus"][value="Unpaid"]').checked = true;
     document.getElementById('saleAmountPaid').value = '';
@@ -147,6 +148,9 @@ const Modals = (function () {
       const txn = await api('/api/sales/' + opts.id);
       document.getElementById('saleDate').value = txn.transaction_date;
       document.getElementById('saleNotes').value = txn.notes || '';
+      // Stored value already carries the "WTL-" prefix; the field only shows
+      // the suffix since the prefix itself is displayed as a locked label.
+      document.getElementById('saleInvoiceNumber').value = (txn.invoice_number || '').replace(/^WTL-/i, '');
       comboEl.dataset.customerId = txn.customer_id;
       combo.setValue(txn.business_name);
       txn.line_items.forEach(li => addLineItemRow(li));
@@ -168,6 +172,12 @@ const Modals = (function () {
     const date = document.getElementById('saleDate').value;
     if (!customerId) return showError('saleModalError', 'Please select a customer.');
     if (!date) return showError('saleModalError', 'Please select a transaction date.');
+    // Strip a "WTL-" the user may have typed themselves (the prefix is
+    // already shown as a locked label) before re-applying it, so the stored
+    // value is always exactly one canonical "WTL-<suffix>".
+    const invoiceSuffix = document.getElementById('saleInvoiceNumber').value.trim().replace(/^WTL-/i, '').trim();
+    if (!invoiceSuffix) return showError('saleModalError', 'Please enter the invoice number.');
+    const invoiceNumber = 'WTL-' + invoiceSuffix;
 
     const rows = Array.from(document.querySelectorAll('#saleLineItemsBody tr'));
     if (!rows.length) return showError('saleModalError', 'Add at least one line item.');
@@ -188,7 +198,7 @@ const Modals = (function () {
       if (editingSaleId) {
         await api('/api/sales/' + editingSaleId, {
           method: 'PUT',
-          body: { customer_id: Number(customerId), transaction_date: date, line_items: lineItems, notes: document.getElementById('saleNotes').value },
+          body: { customer_id: Number(customerId), transaction_date: date, line_items: lineItems, notes: document.getElementById('saleNotes').value, invoice_number: invoiceNumber },
         });
       } else {
         const status = document.querySelector('input[name="saleStatus"]:checked').value;
@@ -202,6 +212,7 @@ const Modals = (function () {
             payment_date: document.getElementById('salePaymentDate').value,
             payment_method: document.getElementById('salePaymentMethod').value,
             notes: document.getElementById('saleNotes').value,
+            invoice_number: invoiceNumber,
           },
         });
       }
@@ -249,6 +260,9 @@ const Modals = (function () {
       const result = await api('/api/sales/scan-invoice', { method: 'POST', body: { image_base64: base64, media_type: mediaType } });
 
       if (result.extracted.transaction_date) document.getElementById('saleDate').value = result.extracted.transaction_date;
+      if (result.extracted.invoice_number) {
+        document.getElementById('saleInvoiceNumber').value = result.extracted.invoice_number.trim().replace(/^WTL-/i, '').trim();
+      }
 
       const comboEl = document.getElementById('saleCustomerCombo');
       if (result.customer_match) {
@@ -286,7 +300,8 @@ const Modals = (function () {
 
       const unmatchedCount = result.line_items.filter(li => !li.product_match).length;
       statusEl.textContent = `Scanned. ${result.customer_match ? '' : 'Could not confidently match the customer - '}` +
-        `${unmatchedCount ? unmatchedCount + ' line item(s) need a SKU picked - ' : ''}please review everything below before saving.`;
+        `${unmatchedCount ? unmatchedCount + ' line item(s) need a SKU picked - ' : ''}` +
+        `${result.extracted.invoice_number ? '' : 'Invoice number was not detected - please enter it - '}please review everything below before saving.`;
     } catch (e) {
       statusEl.textContent = '';
       showError('saleModalError', e.message);
