@@ -6,7 +6,12 @@
 <title><%= typeof title !== 'undefined' ? title + ' – Bakery Sales Tracker' : 'Bakery Sales Tracker' %></title>
 <link rel="stylesheet" href="/css/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥖</text></svg>">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<!-- Pinned to whatever cdnjs currently serves for Chart.js (checked live: 4.5.1 as of
+     this writing). cdnjs periodically prunes old release files - 4.4.4 was previously
+     pinned here and started 404'ing once cdnjs dropped it, which silently broke every
+     chart on the Dashboard ("Chart is not defined"). If this ever happens again, check
+     https://api.cdnjs.com/libraries/Chart.js?fields=version for the current version. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="app-shell">
