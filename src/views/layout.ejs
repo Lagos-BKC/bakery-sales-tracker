@@ -14,6 +14,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
 </head>
 <body>
+<!-- common.js / modals.js must load before any page's own script (the one
+     injected further down as part of the page content): several page
+     scripts (reports.js is the one that actually hit this) build config
+     objects at the top of the file that reference common.js helpers like
+     fmtDate/fmtMoney/api directly, not inside a function - so those
+     references run the instant the page script loads, not on
+     DOMContentLoaded. Previously these two tags were at the bottom of the
+     body, after the page content, so on Reports the page script ran first
+     and crashed immediately with "fmtDate is not defined" - before it ever
+     reached its own DOMContentLoaded listener, which is why the report
+     table spun forever instead of loading or showing an error. -->
+<script src="/js/common.js"></script>
+<script src="/js/modals.js"></script>
 <div class="app-shell">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <aside class="sidebar" id="sidebar">
@@ -285,8 +298,6 @@
   </div>
 </div>
 
-<script src="/js/common.js"></script>
-<script src="/js/modals.js"></script>
 <script>
   var CURRENT_USER = <%- JSON.stringify(currentUser) %>;
 </script>
